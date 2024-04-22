@@ -42,7 +42,7 @@ def yeast():
 
 
 def get_url(server_addr: str, eio_mode: str, _sid: str = None):
-    eio = 4 if eio_mode == "4cc" else 3
+    eio = 3 if eio_mode == "vgl" else 4
     if not _sid:
         return f"{server_addr}/socket.io/?EIO={eio}&transport=polling&t={yeast()}"
     return (
@@ -54,6 +54,13 @@ def ping(socket: websocket.WebSocketApp):
     while True:
         time.sleep(socket.ping_interval)
         socket.send("2")
+
+
+def on_open(socket: websocket.WebSocketApp):
+    print("")
+    socket.send("2probe")
+    if mode == "vgl":
+        threading.Thread(target=ping, args=(socket,)).start()
 
 
 def on_message(socket: websocket.WebSocketApp, message: str):
@@ -86,13 +93,6 @@ def on_close(socket: websocket.WebSocketApp, close_status_code, close_msg):
         print(f"close status code: {close_status_code}")
     if close_msg:
         print(f"close message: {close_msg}")
-
-
-def on_open(socket: websocket.WebSocketApp):
-    print("")
-    socket.send("2probe")
-    if mode != "4cc":
-        threading.Thread(target=ping, args=(socket,)).start()
 
 
 if __name__ == "__main__":
@@ -128,17 +128,17 @@ if __name__ == "__main__":
         }
         ws_kwargs = {
             "url": ws_url[mode],
+            "on_open": on_open,
             "on_message": on_message,
             "on_error": on_error,
             "on_close": on_close,
         }
         ws = websocket.WebSocketApp(**ws_kwargs)
-        ws.on_open = on_open
 
         thread_kwargs = {
             "target": ws.run_forever,
             "kwargs": {
-                "ping_interval": serv_info["pingInterval"],
+                "ping_interval": serv_info["pingInterval"] / 1000,
                 "ping_timeout": 10,
             },
         }
