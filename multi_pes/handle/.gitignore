@@ -1,0 +1,3 @@
+# Not including handle because I'm not sure if someone at Microsoft would complain.
+*
+!.gitignore
