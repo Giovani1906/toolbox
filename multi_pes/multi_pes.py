@@ -34,7 +34,7 @@ if __name__ == "__main__":
             h_path = "handle.exe"
         elif exists("handle/handle.exe"):
             h_path = "handle/handle.exe"
-        if exists("multi_pes/handle/handle.exe"):
+        elif exists("multi_pes/handle/handle.exe"):
             h_path = "multi_pes/handle/handle.exe"
         else:
             print(
