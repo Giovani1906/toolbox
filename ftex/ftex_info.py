@@ -76,10 +76,27 @@ class FtexHeader:
         ) = struct.unpack("< 4s f HHHH  BB HIII  BB 14x  8s 8s", header)
 
 
+def ftex_check(ftex_data: bytes, ver_chk: float, fmt_chk: list[str]) -> FtexHeader | None:
+    ftex_obj = FtexHeader(ftex_data)
+
+    if ver_chk or fmt_chk:
+        ver_pass = ver_chk == round(ftex_obj.version, 2)
+        fmt_pass = any(
+            [
+                tex_fmt in ftex_fmt_str[ftex_obj.pixel_fmt]
+                for tex_fmt in fmt_chk
+            ]
+        )
+
+        if not (ver_pass or fmt_pass):
+            return None
+
+    return ftex_obj
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="FTEX Info Gatherer")
-    parser.add_argument("dir_path", type=str)
-    parser.add_argument("--check-folder", action="store_true")
+    parser.add_argument("path")
     parser.add_argument("--check-version", choices=[2.03, 2.04], type=float)
     fmt_choices = [
         "DXT1",
@@ -97,49 +114,27 @@ if __name__ == "__main__":
     parser.add_argument("--check-format", choices=fmt_choices, default=[], nargs="*")
     args = parser.parse_args()
 
-    if args.check_folder:
-        for root, dirs, files in os.walk(args.dir_path):
+    if os.path.isdir(args.path):
+        for root, dirs, files in os.walk(args.path):
             for file in files:
                 if file.split(".")[-1].lower() == "ftex":
                     path = os.path.join(root, file)
-                    data = open(path, "rb")
-                    ftex = FtexHeader(data.read())
-                    data.close()
-
-                    if args.check_version or args.check_format:
-                        ver_pass = args.check_version == round(ftex.version, 2)
-                        fmt_pass = any(
-                            [
-                                tex_fmt in ftex_fmt_str[ftex.pixel_fmt]
-                                for tex_fmt in args.check_format
-                            ]
-                        )
-                        if not (ver_pass or fmt_pass):
+                    with open(path, "rb") as fd:
+                        if not (ftex := ftex_check(fd.read(), args.check_version, args.check_format)):
                             continue
-
-                    print(
-                        f"{path}\n"
-                        f"FTEX VERSION {round(ftex.version, 2)} "
-                        f"FORMAT {ftex_fmt_str[ftex.pixel_fmt]}"
-                    )
+                        else:
+                            print(
+                                f"{path}\n"
+                                f"FTEX VERSION {round(ftex.version, 2)} "
+                                f"FORMAT {ftex_fmt_str[ftex.pixel_fmt]}"
+                            )
     else:
-        data = open(args.dir_path, "rb")
-        ftex = FtexHeader(data.read())
-        data.close()
-
-        if args.check_version or args.check_format:
-            ver_pass = args.check_version == round(ftex.version, 2)
-            fmt_pass = any(
-                [
-                    tex_fmt in ftex_fmt_str[ftex.pixel_fmt]
-                    for tex_fmt in args.check_format
-                ]
-            )
-            if not (ver_pass or fmt_pass):
+        with open(args.path, "rb") as fd:
+            if not (ftex := ftex_check(fd.read(), args.check_version, args.check_format)):
                 exit(0)
-
-        print(
-            f"{args.dir_path}\n"
-            f"FTEX VERSION {round(ftex.version, 2)} "
-            f"FORMAT {ftex_fmt_str[ftex.pixel_fmt]}"
-        )
+            else:
+                print(
+                    f"{args.path}\n"
+                    f"FTEX VERSION {round(ftex.version, 2)} "
+                    f"FORMAT {ftex_fmt_str[ftex.pixel_fmt]}"
+                )
