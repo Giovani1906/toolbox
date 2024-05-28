@@ -43,6 +43,20 @@ ftex_fmt_str = {
     15: "DXGI_FORMAT_R11G11B10_FLOAT",
 }
 
+fmt_choices = [
+    "DXT1",
+    "DXT3",
+    "DXT5",
+    "BC1",
+    "BC2",
+    "BC3",
+    "BC4",
+    "BC5",
+    "BC6",
+    "BC7",
+    "ARGB",
+]
+
 
 class DecodeError(Exception):
     pass
@@ -76,16 +90,15 @@ class FtexHeader:
         ) = struct.unpack("< 4s f HHHH  BB HIII  BB 14x  8s 8s", header)
 
 
-def ftex_check(ftex_data: bytes, ver_chk: float, fmt_chk: list[str]) -> FtexHeader | None:
+def ftex_check(
+    ftex_data: bytes, fmt_chk: list[str], ver_chk: float
+) -> FtexHeader | None:
     ftex_obj = FtexHeader(ftex_data)
 
-    if ver_chk or fmt_chk:
+    if fmt_chk or ver_chk:
         ver_pass = ver_chk == round(ftex_obj.version, 2)
         fmt_pass = any(
-            [
-                tex_fmt in ftex_fmt_str[ftex_obj.pixel_fmt]
-                for tex_fmt in fmt_chk
-            ]
+            [tex_fmt in ftex_fmt_str[ftex_obj.pixel_fmt] for tex_fmt in fmt_chk]
         )
 
         if not (ver_pass or fmt_pass):
@@ -97,21 +110,8 @@ def ftex_check(ftex_data: bytes, ver_chk: float, fmt_chk: list[str]) -> FtexHead
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="FTEX Info Gatherer")
     parser.add_argument("path")
-    parser.add_argument("--check-version", choices=[2.03, 2.04], type=float)
-    fmt_choices = [
-        "DXT1",
-        "DXT3",
-        "DXT5",
-        "BC1",
-        "BC2",
-        "BC3",
-        "BC4",
-        "BC5",
-        "BC6",
-        "BC7",
-        "ARGB",
-    ]
     parser.add_argument("--check-format", choices=fmt_choices, default=[], nargs="*")
+    parser.add_argument("--check-version", choices=[2.03, 2.04], type=float)
     args = parser.parse_args()
 
     if os.path.isdir(args.path):
@@ -120,7 +120,11 @@ if __name__ == "__main__":
                 if file.split(".")[-1].lower() == "ftex":
                     path = os.path.join(root, file)
                     with open(path, "rb") as fd:
-                        if not (ftex := ftex_check(fd.read(), args.check_version, args.check_format)):
+                        if not (
+                            ftex := ftex_check(
+                                fd.read(), args.check_format, args.check_version
+                            )
+                        ):
                             continue
                         else:
                             print(
@@ -130,7 +134,9 @@ if __name__ == "__main__":
                             )
     else:
         with open(args.path, "rb") as fd:
-            if not (ftex := ftex_check(fd.read(), args.check_version, args.check_format)):
+            if not (
+                ftex := ftex_check(fd.read(), args.check_format, args.check_version)
+            ):
                 exit(0)
             else:
                 print(
