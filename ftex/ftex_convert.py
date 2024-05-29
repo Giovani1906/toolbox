@@ -10,46 +10,117 @@ from ftex_info import fmt_choices, ftex_check
 from pes_file_tools.ftex import dds_to_ftex_buffer, ftex_to_dds_buffer
 
 
-def convert(data: bytes, ftex_format: str = None, ftex_version: float = None):
-    if sys.platform == "win32":
-        return
-    else:
-        dds_buffer = ftex_to_dds_buffer(data)
-        proc = subprocess.Popen(
-            ["identify", "-format", "%m %[compression]", "-"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        p_out, p_err = proc.communicate(dds_buffer)
-        if p_err:
-            raise Exception(p_err.decode("utf-8"))
-        print(p_out.decode("utf-8"))
-
-
 def check_and_convert(
-    file_name: str,
+    filename: str,
     check_for_format: str,
     check_for_version: float,
     convert_to_format: str,
     convert_to_version: float,
     dont_preserve_original: bool,
     keep_dds_file: bool,
-    file_root: str = None,
+    filedir: str = None,
 ):
-    if file_name.split(".")[-1].lower() == "ftex":
-        if file_root:
-            path = os.path.join(file_root, file_name)
+    if filename.split(".")[-1].lower() != "ftex":
+        return
+
+    if filedir:
+        path = os.path.join(filedir, filename)
+    else:
+        path = filename
+        filedir = os.path.dirname(filename)
+
+    with open(path, "rb") as input_buffer:
+        buffer = input_buffer.read()
+
+    chk_fmt = [check_for_format] if check_for_format else []
+    if not (ftex := ftex_check(buffer, chk_fmt, check_for_version)):
+        return
+
+    if not convert_to_format and convert_to_version != round(ftex.version, 2):
+        ftex203 = b"\x85\xeb\x01@"
+        ftex204 = b"\\\x8f\x02@"
+        match convert_to_version:
+            case 2.03:
+                buffer = buffer.replace(ftex204, ftex203)
+            case 2.04:
+                buffer = buffer.replace(ftex203, ftex204)
+
+        if not dont_preserve_original:
+            os.rename(path, path.replace(".ftex", "_old.ftex"))
+
+        with open(path, "wb") as output_buffer:
+            output_buffer.write(buffer)
+    else:
+        dds_buffer = ftex_to_dds_buffer(buffer)
+        match convert_to_format:
+            case "BC1":
+                convert_to_format = "DXT1"
+            case "BC2":
+                convert_to_format = "DXT3"
+            case "BC3":
+                convert_to_format = "DXT5"
+
+        if sys.platform == "win32":
+            dds_path = path.replace(".ftex", "_tmp.dds")
+            with open(dds_path, "wb") as df:
+                df.write(dds_buffer)
+
+            cmd = [
+                os.path.join("bin", "texconv.exe"),
+                "-f",
+                convert_to_format,
+                "-y",
+                "-o",
+                filedir,
+                dds_path,
+            ]
+            p_out = subprocess.check_output(cmd)
+
+            with open(dds_path, "rb") as dcf:
+                dds_converted_buffer = dcf.read()
+
+            if not keep_dds_file:
+                os.remove(dds_path)
         else:
-            path = file_name
+            cmd = [
+                "convert",
+                "-format",
+                "dds",
+                "-define",
+                f"dds:compression={convert_to_format.lower()}",
+                "-",
+                "-",
+            ]
+            # cmd = ["identify", "-format", "%m %[compression]", "-"]
+            proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            p_out, p_err = proc.communicate(dds_buffer)
 
-        with open(path, "rb") as fd:
-            buffer = fd.read()
+            if p_err:
+                raise Exception(p_err.decode("utf-8"))
+            print(p_out.decode("utf-8"))
+            return
 
-            chk_fmt = [check_for_format] if check_for_format else []
-            if not ftex_check(buffer, chk_fmt, check_for_version):
-                return
-            convert(buffer, convert_to_format, convert_to_version)
+        if not dont_preserve_original:
+            os.rename(path, path.replace(".ftex", "_old.ftex"))
+
+        buffer = dds_to_ftex_buffer(dds_converted_buffer)
+
+        if convert_to_version != round(ftex.version, 2):
+            ftex203 = b"\x85\xeb\x01@"
+            ftex204 = b"\\\x8f\x02@"
+            match convert_to_version:
+                case 2.03:
+                    buffer = buffer.replace(ftex204, ftex203)
+                case 2.04:
+                    buffer = buffer.replace(ftex203, ftex204)
+
+        with open(path, "wb") as output_buffer:
+            output_buffer.write(buffer)
 
 
 if __name__ == "__main__":
@@ -87,7 +158,7 @@ if __name__ == "__main__":
     if os.path.isdir(args.path):
         for root, dirs, files in os.walk(args.path):
             with Pool() as p:
-                p.map(partial(check_and_convert, file_root=root, **kwargs), files)
+                p.map(partial(check_and_convert, filedir=root, **kwargs), files)
             """
             for file in files:
                 check_and_convert(file, file_root=root, **kwargs)

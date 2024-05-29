@@ -49,7 +49,9 @@ fmt_blk_cfg = {
 }
 
 
-def dds_mipmap_size(ftex_fmt, width, height, depth, mipmap_idx):
+def dds_mipmap_size(
+    ftex_fmt: int, width: int, height: int, depth: int, mipmap_idx: int
+) -> int | float:
     block_size_pixels, block_size_bytes = fmt_blk_cfg[ftex_fmt]
     scale_factor = 2**mipmap_idx
 
@@ -63,8 +65,12 @@ def dds_mipmap_size(ftex_fmt, width, height, depth, mipmap_idx):
 
 
 def read_image_buffer(
-    stream, image_offset, chunk_count, size_uncompressed, size_compressed
-):
+    stream: io.BytesIO,
+    image_offset: int,
+    chunk_count: int,
+    size_uncompressed: int,
+    size_compressed: int,
+) -> bytes:
     stream.seek(image_offset, 0)
 
     if chunk_count == 0:
@@ -111,7 +117,7 @@ def read_image_buffer(
     return b"".join(image_buffers)
 
 
-def ftex_to_dds_buffer(ftex_buffer):
+def ftex_to_dds_buffer(ftex_buffer: bytes) -> bytes:
     input_stream = io.BytesIO(ftex_buffer)
 
     header = bytearray(64)
@@ -346,17 +352,17 @@ def ftex_to_dds_buffer(ftex_buffer):
     return output_stream.getvalue()
 
 
-def ftex_to_dds(ftex_filename, dds_filename):
-    with open(ftex_filename, "rb") as input_stream:
+def ftex_to_dds(ftex_filepath: str, dds_filepath: str):
+    with open(ftex_filepath, "rb") as input_stream:
         input_buffer = input_stream.read()
 
     output_buffer = ftex_to_dds_buffer(input_buffer)
 
-    with open(dds_filename, "wb") as outputStream:
+    with open(dds_filepath, "wb") as outputStream:
         outputStream.write(output_buffer)
 
 
-def encode_image(data):
+def encode_image(data: bytes) -> [bytes, int]:
     chunk_size = 1 << 14  # Value known not to crash PES
     chunk_count = (len(data) + chunk_size - 1) // chunk_size
 
@@ -383,7 +389,7 @@ def encode_image(data):
     return output, chunk_count
 
 
-def dds_to_ftex_buffer(dds_buffer: bytes, color_space: str) -> bytes:
+def dds_to_ftex_buffer(dds_buffer: bytes, color_space: str = None) -> bytes:
     input_stream = io.BytesIO(dds_buffer)
 
     header = bytearray(128)
@@ -584,11 +590,11 @@ def dds_to_ftex_buffer(dds_buffer: bytes, color_space: str) -> bytes:
     return header + mipmap_buffer + frame_buffer
 
 
-def dds_to_ftex(dds_filename, ftex_filename, color_space):
-    with open(dds_filename, "rb") as input_stream:
+def dds_to_ftex(dds_filepath: str, ftex_filepath: str, color_space: str = None):
+    with open(dds_filepath, "rb") as input_stream:
         input_buffer = input_stream.read()
 
     output_buffer = dds_to_ftex_buffer(try_decompress(input_buffer), color_space)
 
-    with open(ftex_filename, "wb") as output_stream:
+    with open(ftex_filepath, "wb") as output_stream:
         output_stream.write(output_buffer)
