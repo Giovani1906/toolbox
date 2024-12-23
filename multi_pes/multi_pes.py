@@ -1,4 +1,4 @@
-#!C:\Windows\py.exe
+#!C:\Windows\py.exe -3
 import ctypes
 import re
 import subprocess
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         print(
             f"{c}{'=' * 35}\033[41m\033[37m MultiPES {c}{'=' * 35}{r}\n"
             f"{c}|{r}    A Python script that allows a version of PES to be ran multiple times.    {c}|{r}\n"
-            f"{c}|{r}You'll never see that \"Pro Evolution Soccer is already running\" message again.{c}|{r}\n"
+            f'{c}|{r}You\'ll never see that "Pro Evolution Soccer is already running" message again.{c}|{r}\n'
             f"{c}|{r}{' ' * 78}{c}|{r}\n"
             f"{c}|{r}        PES can be launched again after a new line appears down bellow.       {c}|{r}\n"
             f"{c}{'=' * 80}{r}"

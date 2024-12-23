@@ -156,11 +156,8 @@ def ftex_to_dds_buffer(ftex_buffer: bytes) -> bytes:
         raise DecodeError("Unsupported ftex variant")
 
     dds_flags = (
-        0x1  # capabilities
-        | 0x2  # height
-        | 0x4  # width
-        | 0x1000  # pixel format
-    )
+        0x1 | 0x2 | 0x4 | 0x1000
+    )  # capabilities  # height  # width  # pixel format
     dds_capabilities1 = 0x1000  # texture
     dds_capabilities2 = 0
 
@@ -424,10 +421,7 @@ def dds_to_ftex_buffer(dds_buffer: bytes, color_space: str = None) -> bytes:
     if dds_header_size != 124:
         raise DecodeError("Incorrect dds header")
 
-    if (
-        (dds_capabilities1 & 0x400000) > 0  # mipmap
-        and (dds_mipmap_count > 1)
-    ):
+    if (dds_capabilities1 & 0x400000) > 0 and (dds_mipmap_count > 1):  # mipmap
         mipmap_count = dds_mipmap_count
     else:
         mipmap_count = 1

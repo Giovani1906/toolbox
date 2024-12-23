@@ -5,7 +5,7 @@ import sys
 from subprocess import PIPE, Popen, check_output
 
 from ftex_info import fmt_choices, ftex_check, ftex_fmt_str, FtexHeader
-from pes_file_tools.ftex import dds_to_ftex_buffer, ftex_to_dds_buffer
+from lib.ftex import dds_to_ftex_buffer, ftex_to_dds_buffer
 
 
 def check_and_convert(
