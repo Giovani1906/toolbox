@@ -1,3 +1,7 @@
 .idea/
 .ruff_cache/
 venv/
+*.bak
+*.txt
+*.dds
+*.ftex
